@@ -91,6 +91,23 @@ class Runner:
         self._load()
         self._create_run_doc()
         self.start_ts = time.monotonic()
+
+        # Loop guard: claim ownership of the trigger doc immediately, AND
+        # mark this workflow as running so the dispatcher won't re-fire it
+        # on any doc mutation that happens during execution.
+        from ..triggers.loop_guard import (
+            mark_doc_owned, clear_owned_docs,
+            mark_workflow_running, unmark_workflow_running,
+        )
+        mark_workflow_running(self.workflow_name)
+
+        trigger_doctype = self.payload.get("doctype")
+        trigger_name = self.payload.get("doc_name") or (
+            self.payload.get("doc", {}).get("name") if isinstance(self.payload.get("doc"), dict) else None
+        )
+        if trigger_doctype and trigger_name:
+            mark_doc_owned(self.workflow_name, trigger_doctype, trigger_name)
+
         try:
             trigger_node = self._find_trigger_node()
             if not trigger_node:
@@ -122,6 +139,11 @@ class Runner:
             self._finalise("Failed", error=e.message)
         except Exception as e:
             self._finalise("Failed", error=f"{type(e).__name__}: {e}\n{traceback.format_exc()}")
+        finally:
+            # Always release loop-guard state so subsequent unrelated
+            # dispatches in this same worker process aren't suppressed.
+            clear_owned_docs()
+            unmark_workflow_running(self.workflow_name)
         return self.run_doc.name
 
     # ------------------------------------------------------------------

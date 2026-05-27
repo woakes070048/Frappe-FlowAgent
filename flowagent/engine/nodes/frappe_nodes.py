@@ -36,6 +36,9 @@ class CreateDocNode(BaseExecutor):
         values = _parse_dict(cfg.get("values") or cfg.get("fields"))
         doc = frappe.get_doc({"doctype": doctype, **values})
         doc.insert()
+        # Mark as owned by the running workflow so the dispatcher won't
+        # re-fire this workflow when the insert triggers After Insert.
+        _mark_owned(runner, doctype, doc.name)
         return {"name": doc.name, **{k: doc.get(k) for k in values.keys() if doc.get(k) is not None}}
 
 
@@ -64,6 +67,9 @@ class UpdateDocNode(BaseExecutor):
                 "frappe_update: 'Fields' is empty or not valid JSON. "
                 "Provide a JSON object like {\"status\": \"Done\"}."
             )
+        # Mark owned BEFORE the save — the dispatcher fires synchronously
+        # during save(), so the flag must be set first.
+        _mark_owned(runner, doctype, name)
         doc = frappe.get_doc(doctype, name)
         for k, v in values.items():
             doc.set(k, v)
@@ -104,9 +110,22 @@ class SubmitDocNode(BaseExecutor):
         name = cfg.get("name")
         if not (doctype and name):
             frappe.throw("frappe_submit requires doctype and name")
+        _mark_owned(runner, doctype, name)
         doc = frappe.get_doc(doctype, name)
         doc.submit()
         return {"name": doc.name, "docstatus": 1}
+
+
+def _mark_owned(runner, doctype: str, name: str):
+    """Record a doc as owned by the current workflow run. The dispatcher
+    consults this set before firing — owned docs don't re-trigger the
+    workflow that's mutating them."""
+    try:
+        from ...triggers.loop_guard import mark_doc_owned
+        mark_doc_owned(runner.workflow_name, doctype, name)
+    except Exception:
+        # Loop guard is defense-in-depth; don't let it break a save.
+        pass
 
 
 @node("frappe_script")

@@ -106,6 +106,20 @@ def _dispatch_one(wf_name: str, doc, event: str):
             )
         return
 
+    # Loop guard: don't re-fire a workflow on a doc the workflow itself is
+    # mutating, and don't re-fire the same (wf, doc) within COOLDOWN_SECONDS,
+    # and apply the per-workflow rate cap.
+    from .loop_guard import should_fire
+    allowed, reason = should_fire(wf_name, doc.doctype, doc.name)
+    if not allowed:
+        if _verbose() or "rate limit" in reason or "loop" in reason:
+            # Always log loop/rate suppressions even when verbose mode is off —
+            # these indicate misconfigured workflows the user needs to fix.
+            frappe.logger("flowagent").warning(
+                f"[FlowAgent] SUPPRESSED {wf_name} for {doc.doctype}/{doc.name}: {reason}"
+            )
+        return
+
     if wf_row.trigger_condition:
         try:
             if not _eval_condition(wf_row.trigger_condition, doc):
