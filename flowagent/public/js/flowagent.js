@@ -570,6 +570,52 @@ window.flowagent_studio_html = function () {
                      preserveAspectRatio="xMidYMid meet"></svg>
             </div>
 
+            <!-- Floating AI Build button -->
+            <button class="fa-ai-fab" id="fa-ai-fab" data-action="ai-modal"
+                    title="AI Build — describe a workflow (Ctrl/⌘ + K)">
+                <i class="ti ti-sparkles"></i>
+                <span class="fa-ai-fab-label">AI Build</span>
+                <span class="fa-ai-fab-kbd">⌘K</span>
+            </button>
+
+            <!-- AI Build modal (hidden by default) -->
+            <div class="fa-ai-modal" id="fa-ai-modal" style="display:none">
+                <div class="fa-ai-modal-backdrop" data-action="ai-modal-close"></div>
+                <div class="fa-ai-modal-box">
+                    <div class="fa-ai-modal-header">
+                        <div class="fa-ai-modal-mark">
+                            <i class="ti ti-sparkles"></i>
+                        </div>
+                        <div>
+                            <div class="fa-ai-modal-title">AI Workflow Builder</div>
+                            <div class="fa-ai-modal-sub">Describe what you want. We'll build it.</div>
+                        </div>
+                        <button class="fa-ai-modal-close" data-action="ai-modal-close" title="Close (Esc)">
+                            <i class="ti ti-x"></i>
+                        </button>
+                    </div>
+                    <div class="fa-ai-modal-body">
+                        <textarea id="fa-ai-modal-input" rows="3"
+                            placeholder="When a Sales Invoice is submitted with grand_total > 50000, send a WhatsApp approval to the manager…"></textarea>
+                        <div class="fa-ai-modal-tips">
+                            <span class="fa-ai-modal-tip-label">Try one of these</span>
+                            <button class="fa-ai-modal-tip" data-aipm="When a new Lead is created, classify it as hot, warm or cold with AI and update the lead score">Lead auto-qualify</button>
+                            <button class="fa-ai-modal-tip" data-aipm="Every weekday at 9am, fetch overdue Sales Invoices, summarize with AI, and email the accounts team">Daily overdue digest</button>
+                            <button class="fa-ai-modal-tip" data-aipm="When a Job Applicant is added, score their resume against the job with AI and reply to the candidate">Candidate screening</button>
+                            <button class="fa-ai-modal-tip" data-aipm="When an Issue is created, triage it for priority and team using AI, and notify Slack if urgent">Support triage</button>
+                        </div>
+                    </div>
+                    <div class="fa-ai-modal-footer">
+                        <span class="fa-ai-modal-hint">
+                            <kbd>Enter</kbd> to build · <kbd>Esc</kbd> to close
+                        </span>
+                        <button class="fa-ai-modal-build" data-action="ai-modal-build">
+                            <i class="ti ti-sparkles"></i> Build workflow
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Zoom controls (bottom-left) -->
             <div class="fa-zoom-controls">
                 <button class="fa-zoom-btn" data-action="zoom-out" title="Zoom out (Ctrl/⌘ + −)">
@@ -663,6 +709,19 @@ window.flowagent_studio_init = function (page, wrapper) {
     } catch (_) {}
 };
 
+// Called by the Page when the user navigates away. Releases the global
+// listeners so the rest of Frappe Desk doesn't pay for them.
+window.flowagent_studio_teardown = function () {
+    if (state._keydownHandler) {
+        document.removeEventListener('keydown', state._keydownHandler);
+        state._keydownHandler = null;
+    }
+    if (state._keyupHandler) {
+        document.removeEventListener('keyup', state._keyupHandler);
+        state._keyupHandler = null;
+    }
+};
+
 function bindEvents() {
     const root = document.getElementById('fa-app');
     if (!root) return;
@@ -702,18 +761,32 @@ function bindEvents() {
     // Mouse wheel zoom — only when Ctrl/Cmd is held (otherwise scroll).
     // Without this gate, every wheel touch on the canvas would zoom,
     // which feels chaotic on trackpads.
+    let wheelRaf = null;
+    let pendingWheel = null;
     wrap.addEventListener('wheel', e => {
         if (!(e.ctrlKey || e.metaKey)) return;
         e.preventDefault();
         const rect = wrap.getBoundingClientRect();
-        const cx = e.clientX - rect.left;
-        const cy = e.clientY - rect.top;
-        const delta = -Math.sign(e.deltaY) * ZOOM_STEP;
-        zoomAtPoint(state.zoom + delta, cx, cy);
+        pendingWheel = {
+            cx: e.clientX - rect.left,
+            cy: e.clientY - rect.top,
+            delta: -Math.sign(e.deltaY) * ZOOM_STEP,
+        };
+        if (wheelRaf) return;
+        wheelRaf = requestAnimationFrame(() => {
+            wheelRaf = null;
+            if (pendingWheel) {
+                zoomAtPoint(state.zoom + pendingWheel.delta, pendingWheel.cx, pendingWheel.cy);
+                pendingWheel = null;
+            }
+        });
     }, { passive: false });
 
     // Pan: space-bar + drag, or middle-mouse drag, or two-finger pinch-pan
-    document.addEventListener('keydown', e => {
+    // Track handlers so we can detach when leaving the Studio (these are
+    // attached to document, so they'd otherwise leak across page navigations
+    // and slow down the rest of Frappe Desk).
+    state._keydownHandler = function (e) {
         if (e.code === 'Space' && !state.spaceDown && !isTypingTarget(e.target)) {
             state.spaceDown = true;
             wrap.classList.add('fa-space-down');
@@ -724,18 +797,21 @@ function bindEvents() {
             if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom(state.zoom + ZOOM_STEP); }
             if (e.key === '-')                  { e.preventDefault(); setZoom(state.zoom - ZOOM_STEP); }
             if (e.key === '0')                  { e.preventDefault(); resetView(); }
+            if (e.key === 'k')                  { e.preventDefault(); openAIBuildModal(); }
         }
         if (!isTypingTarget(e.target) && e.key === 'f') {
             e.preventDefault();
             fitView();
         }
-    });
-    document.addEventListener('keyup', e => {
+    };
+    state._keyupHandler = function (e) {
         if (e.code === 'Space') {
             state.spaceDown = false;
             wrap.classList.remove('fa-space-down');
         }
-    });
+    };
+    document.addEventListener('keydown', state._keydownHandler);
+    document.addEventListener('keyup', state._keyupHandler);
 
     // Pan drag (space-held or middle-button)
     wrap.addEventListener('mousedown', e => {
@@ -755,15 +831,27 @@ function bindEvents() {
         stage.classList.add('fa-panning');
         const startX = e.clientX, startY = e.clientY;
         const startPanX = state.panX, startPanY = state.panY;
+        let rafId = null;
+        let pendingX = state.panX, pendingY = state.panY;
         function onMove(ev) {
-            state.panX = startPanX + (ev.clientX - startX);
-            state.panY = startPanY + (ev.clientY - startY);
-            applyTransform();
+            pendingX = startPanX + (ev.clientX - startX);
+            pendingY = startPanY + (ev.clientY - startY);
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                rafId = null;
+                state.panX = pendingX;
+                state.panY = pendingY;
+                applyTransformFast();
+            });
         }
         function onUp() {
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
             stage.classList.remove('fa-panning');
+            if (rafId) cancelAnimationFrame(rafId);
+            state.panX = pendingX;
+            state.panY = pendingY;
+            applyTransform();  // full update including minimap
         }
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
@@ -808,6 +896,30 @@ function bindEvents() {
             centreViewAt(fx, fy);
         });
     }
+
+    // AI modal tip buttons — fill the textarea
+    root.querySelectorAll('[data-aipm]').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.preventDefault();
+            const ta = document.getElementById('fa-ai-modal-input');
+            if (ta) {
+                ta.value = btn.dataset.aipm;
+                ta.focus();
+            }
+        });
+    });
+
+    // First-time pulse on the AI FAB to draw attention
+    try {
+        if (!localStorage.getItem('flowagent.aiFabSeen')) {
+            const fab = document.getElementById('fa-ai-fab');
+            if (fab) {
+                fab.classList.add('fa-ai-fab-pulse');
+                // Stop pulsing after 30 seconds even if the user ignores it
+                setTimeout(() => fab.classList.remove('fa-ai-fab-pulse'), 30000);
+            }
+        }
+    } catch (_) {}
 }
 
 function isTypingTarget(el) {
@@ -820,6 +932,11 @@ function isTypingTarget(el) {
 // Zoom + pan
 // ============================================================
 function applyTransform() {
+    applyTransformFast();
+    renderMinimap();
+}
+
+function applyTransformFast() {
     const stage = document.getElementById('fa-canvas-stage');
     const grid = document.getElementById('fa-canvas-grid');
     if (!stage) return;
@@ -831,7 +948,6 @@ function applyTransform() {
     }
     const pctEl = document.getElementById('fa-zoom-pct');
     if (pctEl) pctEl.textContent = Math.round(state.zoom * 100) + '%';
-    renderMinimap();
 }
 
 function setZoom(newZoom) {
@@ -946,20 +1062,113 @@ function renderMinimap() {
 
 function handleAction(name) {
     switch (name) {
-        case 'open':         return openDialog();
-        case 'new':          return newWorkflow();
-        case 'templates':    return templatesDialog();
-        case 'clear':        return clearCanvas(true);
-        case 'save':         return saveWorkflow();
-        case 'run':          return runWorkflow();
-        case 'ai-send':      return aiSend();
-        case 'diagnose':     return runDiagnose();
-        case 'open-ai-tab':  return switchTab('ai');
-        case 'zoom-in':      return setZoom(state.zoom + ZOOM_STEP);
-        case 'zoom-out':     return setZoom(state.zoom - ZOOM_STEP);
-        case 'zoom-reset':   return resetView();
-        case 'zoom-fit':     return fitView();
+        case 'open':            return openDialog();
+        case 'new':             return newWorkflow();
+        case 'templates':       return templatesDialog();
+        case 'clear':           return clearCanvas(true);
+        case 'save':            return saveWorkflow();
+        case 'run':             return runWorkflow();
+        case 'ai-send':         return aiSend();
+        case 'diagnose':        return runDiagnose();
+        case 'open-ai-tab':     return switchTab('ai');
+        case 'zoom-in':         return setZoom(state.zoom + ZOOM_STEP);
+        case 'zoom-out':        return setZoom(state.zoom - ZOOM_STEP);
+        case 'zoom-reset':      return resetView();
+        case 'zoom-fit':        return fitView();
+        case 'ai-modal':        return openAIBuildModal();
+        case 'ai-modal-close':  return closeAIBuildModal();
+        case 'ai-modal-build':  return aiModalBuild();
     }
+}
+
+function openAIBuildModal() {
+    const modal = document.getElementById('fa-ai-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    // Stop the FAB pulse once the user has discovered it
+    const fab = document.getElementById('fa-ai-fab');
+    if (fab) fab.classList.remove('fa-ai-fab-pulse');
+    try { localStorage.setItem('flowagent.aiFabSeen', '1'); } catch (_) {}
+    // Focus the textarea after the modal animates in
+    setTimeout(() => {
+        const ta = document.getElementById('fa-ai-modal-input');
+        if (ta) ta.focus();
+    }, 50);
+    // Esc to close
+    state._aiModalEsc = function (e) {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeAIBuildModal();
+        }
+        // Enter (no shift) to submit
+        if (e.key === 'Enter' && !e.shiftKey && document.activeElement &&
+            document.activeElement.id === 'fa-ai-modal-input') {
+            e.preventDefault();
+            aiModalBuild();
+        }
+    };
+    document.addEventListener('keydown', state._aiModalEsc);
+}
+
+function closeAIBuildModal() {
+    const modal = document.getElementById('fa-ai-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    if (state._aiModalEsc) {
+        document.removeEventListener('keydown', state._aiModalEsc);
+        state._aiModalEsc = null;
+    }
+}
+
+function aiModalBuild() {
+    const ta = document.getElementById('fa-ai-modal-input');
+    if (!ta) return;
+    const msg = ta.value.trim();
+    if (!msg) {
+        ta.focus();
+        return;
+    }
+    const buildBtn = document.querySelector('[data-action="ai-modal-build"]');
+    if (buildBtn) {
+        buildBtn.disabled = true;
+        buildBtn.innerHTML = '<i class="ti ti-loader-2 fa-spin"></i> Building…';
+    }
+    frappe.call({
+        method: 'flowagent.api.ai_build.build_from_prompt',
+        args: { prompt: msg },
+        callback: r => {
+            if (buildBtn) {
+                buildBtn.disabled = false;
+                buildBtn.innerHTML = '<i class="ti ti-sparkles"></i> Build workflow';
+            }
+            const parsed = r.message;
+            if (!parsed || !parsed.nodes) {
+                frappe.show_alert({
+                    message: 'No workflow could be parsed. Try describing trigger → AI step → action.',
+                    indicator: 'orange',
+                }, 6);
+                return;
+            }
+            applyAIWorkflow(parsed);
+            closeAIBuildModal();
+            ta.value = '';
+            frappe.show_alert({
+                message: `✓ Built ${parsed.nodes.length} nodes — customise and Save`,
+                indicator: 'green',
+            }, 6);
+            addLog(`AI built ${parsed.nodes.length} nodes from prompt`, 'ok');
+        },
+        error: err => {
+            if (buildBtn) {
+                buildBtn.disabled = false;
+                buildBtn.innerHTML = '<i class="ti ti-sparkles"></i> Build workflow';
+            }
+            frappe.show_alert({
+                message: 'AI Build failed: ' + ((err && err.message) || 'unknown error'),
+                indicator: 'red',
+            }, 8);
+        },
+    });
 }
 
 function runDiagnose() {
@@ -1304,21 +1513,53 @@ function startNodeDrag(e, id) {
     const start = screenToWorld(e.clientX, e.clientY);
     const ox = start.wx - n.x;
     const oy = start.wy - n.y;
+    const el = document.getElementById('fa-node-' + id);
+    let rafId = null;
+    let pendingX = n.x, pendingY = n.y;
     function move(e2) {
         const w = screenToWorld(e2.clientX, e2.clientY);
-        n.x = Math.max(0, w.wx - ox);
-        n.y = Math.max(0, w.wy - oy);
-        const el = document.getElementById('fa-node-' + id);
-        if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; }
-        renderEdges();
-        renderMinimap();
+        pendingX = Math.max(0, w.wx - ox);
+        pendingY = Math.max(0, w.wy - oy);
+        // Move the node element immediately for snappy feel — this is cheap
+        if (el) { el.style.left = pendingX + 'px'; el.style.top = pendingY + 'px'; }
+        // Throttle the expensive bits (edge redraw, minimap) to one per frame
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+            rafId = null;
+            n.x = pendingX;
+            n.y = pendingY;
+            renderEdgesFast();
+        });
     }
     function up() {
         document.removeEventListener('mousemove', move);
         document.removeEventListener('mouseup', up);
+        if (rafId) cancelAnimationFrame(rafId);
+        n.x = pendingX;
+        n.y = pendingY;
+        renderEdges();
+        renderMinimap();
     }
     document.addEventListener('mousemove', move);
     document.addEventListener('mouseup', up);
+}
+
+// Cheap variant of renderEdges that only updates the `d` attributes of
+// existing paths instead of rebuilding the whole SVG. Used during drag.
+function renderEdgesFast() {
+    const svg = document.getElementById('fa-edges');
+    if (!svg) return;
+    const paths = svg.querySelectorAll('path.fa-edge-path');
+    state.edges.forEach((e, i) => {
+        const from = state.nodes.find(n => n.id === e.from);
+        const to = state.nodes.find(n => n.id === e.to);
+        if (!from || !to) return;
+        const fp = portXY(from, e.fromPort || 'out');
+        const tp = portXY(to, 'in');
+        const dx = (tp.x - fp.x) / 2;
+        const d = `M${fp.x},${fp.y} C${fp.x + dx},${fp.y} ${tp.x - dx},${tp.y} ${tp.x},${tp.y}`;
+        if (paths[i]) paths[i].setAttribute('d', d);
+    });
 }
 
 function selectNode(id) {
@@ -1405,14 +1646,17 @@ function flashPort(nodeId, port, sticky) {
 function renderEdges() {
     const svg = document.getElementById('fa-edges');
     if (!svg) return;
-    // SVG lives inside the transformed stage. Size it generously so paths
-    // remain visible regardless of zoom/pan. We use a 6000×6000 canvas
-    // which is more than enough for any reasonable workflow graph.
-    const SVG_SIZE = 6000;
-    svg.setAttribute('width', SVG_SIZE);
-    svg.setAttribute('height', SVG_SIZE);
-    svg.style.width = SVG_SIZE + 'px';
-    svg.style.height = SVG_SIZE + 'px';
+    // Size SVG based on actual content. A massive fixed canvas is a paint
+    // hog; this stays just big enough for the current graph plus margin.
+    let maxX = 1200, maxY = 800;
+    state.nodes.forEach(n => {
+        if (n.x + 300 > maxX) maxX = n.x + 300;
+        if (n.y + 200 > maxY) maxY = n.y + 200;
+    });
+    svg.setAttribute('width', maxX);
+    svg.setAttribute('height', maxY);
+    svg.style.width = maxX + 'px';
+    svg.style.height = maxY + 'px';
     svg.innerHTML = '';
     state.edges.forEach(e => {
         const from = state.nodes.find(n => n.id === e.from);
