@@ -12,7 +12,7 @@
 function _flowagentLoadDeps() {
     const links = [
         { id: 'fa-tabler-css', href: 'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css' },
-        { id: 'fa-geist-css',  href: 'https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap' },
+        { id: 'fa-geist-css',  href: 'https://fonts.googleapis.com/css2?family=Geist:wght@400;600&family=Geist+Mono:wght@500&display=swap' },
     ];
     links.forEach(l => {
         if (document.getElementById(l.id)) return;

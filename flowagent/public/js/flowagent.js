@@ -481,6 +481,8 @@ let state = {
     panX: 0,
     panY: 0,
     spaceDown: false,
+    // AI Build modal mode: 'create' or 'modify'
+    aiMode: 'create',
 };
 
 const ZOOM_MIN = 0.3;
@@ -588,21 +590,40 @@ window.flowagent_studio_html = function () {
                         </div>
                         <div>
                             <div class="fa-ai-modal-title">AI Workflow Builder</div>
-                            <div class="fa-ai-modal-sub">Describe what you want. We'll build it.</div>
+                            <div class="fa-ai-modal-sub" id="fa-ai-modal-sub">Describe what you want. We'll build it.</div>
                         </div>
                         <button class="fa-ai-modal-close" data-action="ai-modal-close" title="Close (Esc)">
                             <i class="ti ti-x"></i>
                         </button>
                     </div>
+
+                    <!-- Mode toggle -->
+                    <div class="fa-ai-mode-tabs" id="fa-ai-mode-tabs">
+                        <button class="fa-ai-mode-tab fa-ai-mode-active" data-mode="create">
+                            <i class="ti ti-plus"></i> Create new
+                        </button>
+                        <button class="fa-ai-mode-tab" data-mode="modify" id="fa-ai-mode-modify-btn">
+                            <i class="ti ti-edit"></i> Modify this workflow
+                            <span class="fa-ai-mode-count" id="fa-ai-mode-count"></span>
+                        </button>
+                    </div>
+
                     <div class="fa-ai-modal-body">
                         <textarea id="fa-ai-modal-input" rows="3"
                             placeholder="When a Sales Invoice is submitted with grand_total > 50000, send a WhatsApp approval to the manager…"></textarea>
-                        <div class="fa-ai-modal-tips">
+                        <div class="fa-ai-modal-tips" id="fa-ai-modal-tips-create">
                             <span class="fa-ai-modal-tip-label">Try one of these</span>
                             <button class="fa-ai-modal-tip" data-aipm="When a new Lead is created, classify it as hot, warm or cold with AI and update the lead score">Lead auto-qualify</button>
                             <button class="fa-ai-modal-tip" data-aipm="Every weekday at 9am, fetch overdue Sales Invoices, summarize with AI, and email the accounts team">Daily overdue digest</button>
                             <button class="fa-ai-modal-tip" data-aipm="When a Job Applicant is added, score their resume against the job with AI and reply to the candidate">Candidate screening</button>
                             <button class="fa-ai-modal-tip" data-aipm="When an Issue is created, triage it for priority and team using AI, and notify Slack if urgent">Support triage</button>
+                        </div>
+                        <div class="fa-ai-modal-tips" id="fa-ai-modal-tips-modify" style="display:none">
+                            <span class="fa-ai-modal-tip-label">Common edits</span>
+                            <button class="fa-ai-modal-tip" data-aipm="Add a Slack notification step after the existing AI step">Add Slack notification</button>
+                            <button class="fa-ai-modal-tip" data-aipm="Add an email step at the end that emails the manager with the summary">Add email step</button>
+                            <button class="fa-ai-modal-tip" data-aipm="Add a condition that only runs the downstream steps if the customer is a premium customer">Add a condition</button>
+                            <button class="fa-ai-modal-tip" data-aipm="Change the trigger to fire on After Submit instead of After Save">Change trigger event</button>
                         </div>
                     </div>
                     <div class="fa-ai-modal-footer">
@@ -610,7 +631,7 @@ window.flowagent_studio_html = function () {
                             <kbd>Enter</kbd> to build · <kbd>Esc</kbd> to close
                         </span>
                         <button class="fa-ai-modal-build" data-action="ai-modal-build">
-                            <i class="ti ti-sparkles"></i> Build workflow
+                            <i class="ti ti-sparkles"></i> <span id="fa-ai-modal-build-label">Build workflow</span>
                         </button>
                     </div>
                 </div>
@@ -909,14 +930,24 @@ function bindEvents() {
         });
     });
 
+    // AI modal mode tabs (Create / Modify)
+    root.querySelectorAll('.fa-ai-mode-tab').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.preventDefault();
+            if (btn.disabled) return;
+            setAIMode(btn.dataset.mode);
+        });
+    });
+
     // First-time pulse on the AI FAB to draw attention
     try {
         if (!localStorage.getItem('flowagent.aiFabSeen')) {
             const fab = document.getElementById('fa-ai-fab');
             if (fab) {
                 fab.classList.add('fa-ai-fab-pulse');
-                // Stop pulsing after 30 seconds even if the user ignores it
-                setTimeout(() => fab.classList.remove('fa-ai-fab-pulse'), 30000);
+                // Stop pulsing after 8 seconds even if the user ignores it —
+                // a longer pulse just costs GPU cycles for no benefit.
+                setTimeout(() => fab.classList.remove('fa-ai-fab-pulse'), 8000);
             }
         }
     } catch (_) {}
@@ -1089,6 +1120,24 @@ function openAIBuildModal() {
     const fab = document.getElementById('fa-ai-fab');
     if (fab) fab.classList.remove('fa-ai-fab-pulse');
     try { localStorage.setItem('flowagent.aiFabSeen', '1'); } catch (_) {}
+
+    // Decide default mode: if there's an existing workflow on the canvas,
+    // default to "modify" so the user can iteratively refine. Otherwise
+    // default to "create".
+    const hasExistingWorkflow = state.nodes && state.nodes.length > 0;
+    setAIMode(hasExistingWorkflow ? 'modify' : 'create');
+    // Show the modify tab as enabled only when there's a workflow to modify
+    const modifyBtn = document.getElementById('fa-ai-mode-modify-btn');
+    if (modifyBtn) {
+        modifyBtn.disabled = !hasExistingWorkflow;
+        modifyBtn.style.opacity = hasExistingWorkflow ? '' : '0.4';
+        modifyBtn.style.cursor = hasExistingWorkflow ? 'pointer' : 'not-allowed';
+    }
+    const countEl = document.getElementById('fa-ai-mode-count');
+    if (countEl) {
+        countEl.textContent = hasExistingWorkflow ? `(${state.nodes.length} nodes)` : '';
+    }
+
     // Focus the textarea after the modal animates in
     setTimeout(() => {
         const ta = document.getElementById('fa-ai-modal-input');
@@ -1108,6 +1157,33 @@ function openAIBuildModal() {
         }
     };
     document.addEventListener('keydown', state._aiModalEsc);
+}
+
+function setAIMode(mode) {
+    state.aiMode = mode;
+    // Update tab UI
+    document.querySelectorAll('.fa-ai-mode-tab').forEach(btn => {
+        btn.classList.toggle('fa-ai-mode-active', btn.dataset.mode === mode);
+    });
+    // Swap placeholder + button label + sub text + tip list
+    const ta = document.getElementById('fa-ai-modal-input');
+    const sub = document.getElementById('fa-ai-modal-sub');
+    const buildLabel = document.getElementById('fa-ai-modal-build-label');
+    const tipsCreate = document.getElementById('fa-ai-modal-tips-create');
+    const tipsModify = document.getElementById('fa-ai-modal-tips-modify');
+    if (mode === 'modify') {
+        if (ta) ta.placeholder = 'Add a Slack notification after the AI step, and only if the amount is above 10000…';
+        if (sub) sub.textContent = 'Describe a change to apply to the current workflow.';
+        if (buildLabel) buildLabel.textContent = 'Apply change';
+        if (tipsCreate) tipsCreate.style.display = 'none';
+        if (tipsModify) tipsModify.style.display = '';
+    } else {
+        if (ta) ta.placeholder = "When a Sales Invoice is submitted with grand_total > 50000, send a WhatsApp approval to the manager…";
+        if (sub) sub.textContent = "Describe what you want. We'll build it.";
+        if (buildLabel) buildLabel.textContent = 'Build workflow';
+        if (tipsCreate) tipsCreate.style.display = '';
+        if (tipsModify) tipsModify.style.display = 'none';
+    }
 }
 
 function closeAIBuildModal() {
@@ -1131,20 +1207,38 @@ function aiModalBuild() {
     const buildBtn = document.querySelector('[data-action="ai-modal-build"]');
     if (buildBtn) {
         buildBtn.disabled = true;
-        buildBtn.innerHTML = '<i class="ti ti-loader-2 fa-spin"></i> Building…';
+        buildBtn.innerHTML = '<i class="ti ti-loader-2 fa-spin"></i> Working…';
     }
+
+    // Prepare args. In modify mode, send the current workflow so the
+    // model can revise it instead of starting over.
+    const args = { prompt: msg, mode: state.aiMode };
+    if (state.aiMode === 'modify') {
+        // Sync any pending Link control values into node cfg before snapshotting
+        if (typeof syncAllControls === 'function') syncAllControls();
+        args.current_workflow = JSON.stringify({
+            workflow_name: state.workflowName,
+            trigger: inferTriggerFromCanvas(),
+            nodes: state.nodes.map(n => ({
+                id: n.id, type: n.type, x: n.x, y: n.y, cfg: n.cfg,
+            })),
+            edges: state.edges.map(e => ({ from: e.from, to: e.to, fromPort: e.fromPort })),
+        });
+    }
+
     frappe.call({
         method: 'flowagent.api.ai_build.build_from_prompt',
-        args: { prompt: msg },
+        args: args,
         callback: r => {
             if (buildBtn) {
                 buildBtn.disabled = false;
-                buildBtn.innerHTML = '<i class="ti ti-sparkles"></i> Build workflow';
+                const label = state.aiMode === 'modify' ? 'Apply change' : 'Build workflow';
+                buildBtn.innerHTML = `<i class="ti ti-sparkles"></i> ${label}`;
             }
             const parsed = r.message;
             if (!parsed || !parsed.nodes) {
                 frappe.show_alert({
-                    message: 'No workflow could be parsed. Try describing trigger → AI step → action.',
+                    message: 'AI could not produce a workflow. Try rephrasing.',
                     indicator: 'orange',
                 }, 6);
                 return;
@@ -1152,16 +1246,18 @@ function aiModalBuild() {
             applyAIWorkflow(parsed);
             closeAIBuildModal();
             ta.value = '';
+            const verb = parsed._mode === 'modify' ? 'Updated' : 'Built';
             frappe.show_alert({
-                message: `✓ Built ${parsed.nodes.length} nodes — customise and Save`,
+                message: `✓ ${verb} ${parsed.nodes.length} nodes — review and Save`,
                 indicator: 'green',
             }, 6);
-            addLog(`AI built ${parsed.nodes.length} nodes from prompt`, 'ok');
+            addLog(`AI ${verb.toLowerCase()} ${parsed.nodes.length} nodes from prompt`, 'ok');
         },
         error: err => {
             if (buildBtn) {
                 buildBtn.disabled = false;
-                buildBtn.innerHTML = '<i class="ti ti-sparkles"></i> Build workflow';
+                const label = state.aiMode === 'modify' ? 'Apply change' : 'Build workflow';
+                buildBtn.innerHTML = `<i class="ti ti-sparkles"></i> ${label}`;
             }
             frappe.show_alert({
                 message: 'AI Build failed: ' + ((err && err.message) || 'unknown error'),

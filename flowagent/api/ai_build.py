@@ -97,9 +97,37 @@ WIRING:
 Return only the JSON object. Nothing before, nothing after."""
 
 
+MODIFY_PROMPT_ADDENDUM = """
+
+YOU ARE MODIFYING AN EXISTING WORKFLOW.
+
+Below is the user's current workflow as JSON. Apply the user's requested change and return the COMPLETE updated workflow in the same output format. Important rules:
+
+1. Preserve nodes the user didn't ask to change. Keep their id, x, y, type, and cfg as-is.
+2. Only add, remove, or modify nodes the change clearly requires.
+3. If you add new nodes, pick fresh ids that don't collide (e.g. n100, n101, ...) and place them at sensible x/y coordinates relative to the existing layout.
+4. If you remove a node, also remove every edge referencing it.
+5. Preserve the existing trigger unless the user's change explicitly asks to alter it.
+6. Return the full graph, not a diff.
+
+CURRENT WORKFLOW:
+{current_workflow_json}
+
+USER'S REQUESTED CHANGE:"""
+
+
 @frappe.whitelist()
-def build_from_prompt(prompt: str, model: str | None = None):
-    """Convert a NL workflow description into a graph JSON."""
+def build_from_prompt(prompt: str, model: str | None = None,
+                      mode: str = "create", current_workflow: str | None = None):
+    """Convert a NL workflow description into a graph JSON.
+
+    Args:
+        prompt: User's natural-language description.
+        model: Override the default Anthropic model.
+        mode: "create" (default) or "modify".
+        current_workflow: JSON string of the current workflow when mode="modify".
+                          Shape: {"workflow_name", "trigger", "nodes", "edges"}.
+    """
     if not (
         "System Manager" in frappe.get_roles()
         or "FlowAgent Manager" in frappe.get_roles()
@@ -118,12 +146,34 @@ def build_from_prompt(prompt: str, model: str | None = None):
     if not key:
         frappe.throw("Set the Anthropic API key in FlowAgent Settings before using AI Build")
 
+    # Compose the system prompt — base + (optional) modify addendum carrying
+    # the current workflow.
+    system_prompt = SYSTEM_PROMPT
+    user_message = prompt
+    if mode == "modify":
+        if not current_workflow:
+            frappe.throw("modify mode requires current_workflow")
+        try:
+            current = json.loads(current_workflow) if isinstance(current_workflow, str) else current_workflow
+        except json.JSONDecodeError:
+            frappe.throw("current_workflow must be valid JSON")
+        # Trim down to just what the model needs
+        trimmed = {
+            "workflow_name": current.get("workflow_name", ""),
+            "trigger": current.get("trigger", {}),
+            "nodes": current.get("nodes", []),
+            "edges": current.get("edges", []),
+        }
+        system_prompt = SYSTEM_PROMPT + MODIFY_PROMPT_ADDENDUM.format(
+            current_workflow_json=json.dumps(trimmed, indent=2)
+        )
+
     client = Anthropic(api_key=key)
     response = client.messages.create(
         model=model or get_default_model(),
-        max_tokens=2000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}],
+        max_tokens=4000,  # modify mode returns the whole graph, so give it room
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_message}],
     )
     raw = "".join(b.text for b in response.content if getattr(b, "type", None) == "text").strip()
 
@@ -131,7 +181,7 @@ def build_from_prompt(prompt: str, model: str | None = None):
     cleaned = _strip_fences(raw)
     try:
         parsed = json.loads(cleaned)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         # Last-ditch: find the first {...} balanced block
         m = re.search(r"\{.*\}", cleaned, re.DOTALL)
         if not m:
@@ -140,6 +190,8 @@ def build_from_prompt(prompt: str, model: str | None = None):
 
     # Light validation — drop unknown node types so the canvas doesn't blow up
     parsed["nodes"] = [n for n in parsed.get("nodes", []) if n.get("type") in VALID_NODE_TYPES]
+    # Tell the frontend which mode we used so the canvas can react accordingly
+    parsed["_mode"] = mode
     return parsed
 
 
