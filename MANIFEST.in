@@ -1,0 +1,19 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+include license.txt
+recursive-include flowagent *.css
+recursive-include flowagent *.csv
+recursive-include flowagent *.html
+recursive-include flowagent *.ico
+recursive-include flowagent *.js
+recursive-include flowagent *.json
+recursive-include flowagent *.md
+recursive-include flowagent *.png
+recursive-include flowagent *.py
+recursive-include flowagent *.svg
+recursive-include flowagent *.txt
+recursive-exclude flowagent *.pyc

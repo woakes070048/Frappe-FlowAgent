@@ -1,0 +1,86 @@
+{
+ "actions": [],
+ "creation": "2026-05-26 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "step_index",
+  "node_id",
+  "node_type",
+  "node_label",
+  "status",
+  "duration_ms",
+  "section_io",
+  "input_snapshot",
+  "output_snapshot",
+  "error"
+ ],
+ "fields": [
+  {
+   "fieldname": "step_index",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "#"
+  },
+  {
+   "fieldname": "node_id",
+   "fieldtype": "Data",
+   "label": "Node ID"
+  },
+  {
+   "fieldname": "node_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Node Type"
+  },
+  {
+   "fieldname": "node_label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Label"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nRunning\nSuccess\nSkipped\nFailed"
+  },
+  {
+   "fieldname": "duration_ms",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "ms"
+  },
+  {
+   "fieldname": "section_io",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "input_snapshot",
+   "fieldtype": "Long Text",
+   "label": "Input (JSON)"
+  },
+  {
+   "fieldname": "output_snapshot",
+   "fieldtype": "Long Text",
+   "label": "Output (JSON)"
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Long Text",
+   "label": "Error"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-26 12:00:00",
+ "modified_by": "Administrator",
+ "module": "FlowAgent Core",
+ "name": "FlowAgent Workflow Run Step",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "step_index",
+ "sort_order": "ASC"
+}

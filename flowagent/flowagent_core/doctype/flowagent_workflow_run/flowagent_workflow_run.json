@@ -1,0 +1,134 @@
+{
+ "actions": [],
+ "autoname": "format:RUN-{YYYY}-{MM}-{DD}-{#####}",
+ "creation": "2026-05-26 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "workflow",
+  "status",
+  "trigger_source",
+  "column_break_top",
+  "started_at",
+  "ended_at",
+  "duration_ms",
+  "section_payload",
+  "trigger_payload",
+  "final_context",
+  "error_message",
+  "section_steps",
+  "steps"
+ ],
+ "fields": [
+  {
+   "fieldname": "workflow",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Workflow",
+   "options": "FlowAgent Workflow",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Queued",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Queued\nRunning\nSuccess\nFailed\nCancelled\nTimeout",
+   "search_index": 1
+  },
+  {
+   "fieldname": "trigger_source",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Trigger Source"
+  },
+  {
+   "fieldname": "column_break_top",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "started_at",
+   "fieldtype": "Datetime",
+   "label": "Started At"
+  },
+  {
+   "fieldname": "ended_at",
+   "fieldtype": "Datetime",
+   "label": "Ended At"
+  },
+  {
+   "fieldname": "duration_ms",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Duration (ms)"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_payload",
+   "fieldtype": "Section Break",
+   "label": "Payload & Context"
+  },
+  {
+   "fieldname": "trigger_payload",
+   "fieldtype": "Long Text",
+   "label": "Trigger Payload (JSON)"
+  },
+  {
+   "fieldname": "final_context",
+   "fieldtype": "Long Text",
+   "label": "Final Context (JSON)"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Long Text",
+   "label": "Error Message"
+  },
+  {
+   "fieldname": "section_steps",
+   "fieldtype": "Section Break",
+   "label": "Step Trace"
+  },
+  {
+   "fieldname": "steps",
+   "fieldtype": "Table",
+   "label": "Steps",
+   "options": "FlowAgent Workflow Run Step"
+  }
+ ],
+ "in_create": 0,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-05-26 12:00:00",
+ "modified_by": "Administrator",
+ "module": "FlowAgent Core",
+ "name": "FlowAgent Workflow Run",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "FlowAgent Manager",
+   "share": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "title_field": "workflow"
+}

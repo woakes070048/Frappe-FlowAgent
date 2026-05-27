@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "creation": "2026-05-26 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_ai",
+  "anthropic_api_key",
+  "default_model",
+  "column_break_ai",
+  "max_agent_iterations",
+  "section_execution",
+  "max_steps_per_run",
+  "default_timeout_seconds",
+  "column_break_exec",
+  "run_retention_days",
+  "section_webhook",
+  "webhook_secret",
+  "regenerate_webhook_secret"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_ai",
+   "fieldtype": "Section Break",
+   "label": "AI Provider"
+  },
+  {
+   "description": "Anthropic API key. Required for AI nodes and the AI Build feature. Stored encrypted.",
+   "fieldname": "anthropic_api_key",
+   "fieldtype": "Password",
+   "label": "Anthropic API Key"
+  },
+  {
+   "default": "claude-sonnet-4-5",
+   "description": "Default Claude model used by AI nodes when none is specified on the node itself.",
+   "fieldname": "default_model",
+   "fieldtype": "Data",
+   "label": "Default Model"
+  },
+  {
+   "fieldname": "column_break_ai",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "8",
+   "description": "Maximum tool-use iterations the Auto Agent node will run before bailing out.",
+   "fieldname": "max_agent_iterations",
+   "fieldtype": "Int",
+   "label": "Max Agent Iterations"
+  },
+  {
+   "fieldname": "section_execution",
+   "fieldtype": "Section Break",
+   "label": "Execution Limits"
+  },
+  {
+   "default": "100",
+   "description": "Hard ceiling on how many node executions a single run can perform. Protects against runaway loops.",
+   "fieldname": "max_steps_per_run",
+   "fieldtype": "Int",
+   "label": "Max Steps per Run"
+  },
+  {
+   "default": "30",
+   "description": "Default per-node timeout in seconds. Individual nodes can override.",
+   "fieldname": "default_timeout_seconds",
+   "fieldtype": "Int",
+   "label": "Default Node Timeout (sec)"
+  },
+  {
+   "fieldname": "column_break_exec",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "30",
+   "description": "Workflow Runs and their step traces are purged after this many days. Set to 0 to keep forever.",
+   "fieldname": "run_retention_days",
+   "fieldtype": "Int",
+   "label": "Run Retention (days)"
+  },
+  {
+   "fieldname": "section_webhook",
+   "fieldtype": "Section Break",
+   "label": "Webhook"
+  },
+  {
+   "description": "Shared secret used to sign incoming webhook requests. Append &token=<secret> to webhook URLs, or send as X-FlowAgent-Token header.",
+   "fieldname": "webhook_secret",
+   "fieldtype": "Data",
+   "label": "Webhook Secret",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.webhook_secret",
+   "fieldname": "regenerate_webhook_secret",
+   "fieldtype": "Button",
+   "label": "Regenerate Secret"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-05-26 12:00:00",
+ "modified_by": "Administrator",
+ "module": "FlowAgent Core",
+ "name": "FlowAgent Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

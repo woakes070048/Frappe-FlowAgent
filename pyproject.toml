@@ -1,0 +1,25 @@
+[project]
+name = "flowagent"
+authors = [
+    { name = "FlowAgent", email = "hello@flowagent.dev" }
+]
+description = "Visual AI Workflow Automation for Frappe — drag-and-drop builder with AI agents, DocType triggers, and multi-step orchestration"
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    # Pinned ranges per Frappe convention; bench resolves these via pip.
+    "anthropic>=0.40.0",
+    "croniter>=2.0.0",
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench.dev-dependencies]
+# bench picks these up when you run `bench setup requirements --dev`
+# (leave empty unless you want test/lint deps shipped with the app)
+
+[tool.flit.module]
+name = "flowagent"

@@ -1,0 +1,40 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"flowagent_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>FlowAgent</b></span>\",\"col\":12}},{\"id\":\"flowagent_shortcut_studio\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open Studio\",\"col\":4}},{\"id\":\"flowagent_shortcut_wf\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"All Workflows\",\"col\":4}},{\"id\":\"flowagent_shortcut_runs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Recent Runs\",\"col\":4}},{\"id\":\"flowagent_card_break\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"flowagent_card_master\",\"type\":\"card\",\"data\":{\"card_name\":\"Workflow\",\"col\":4}},{\"id\":\"flowagent_card_runs\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring\",\"col\":4}},{\"id\":\"flowagent_card_settings\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}}]",
+ "creation": "2026-05-26 12:00:00",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "branch",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "FlowAgent",
+ "links": [
+  {"hidden": 0, "is_query_report": 0, "label": "Workflow", "link_count": 0, "link_type": "DocType", "onboard": 1, "type": "Card Break"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Workflow", "link_count": 0, "link_to": "FlowAgent Workflow", "link_type": "DocType", "onboard": 1, "type": "Link"},
+  {"hidden": 0, "is_query_report": 0, "label": "Monitoring", "link_count": 0, "link_type": "DocType", "onboard": 0, "type": "Card Break"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Workflow Run", "link_count": 0, "link_to": "FlowAgent Workflow Run", "link_type": "DocType", "onboard": 0, "type": "Link"},
+  {"hidden": 0, "is_query_report": 0, "label": "Settings", "link_count": 0, "link_type": "DocType", "onboard": 0, "type": "Card Break"},
+  {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "FlowAgent Settings", "link_count": 0, "link_to": "FlowAgent Settings", "link_type": "DocType", "onboard": 0, "type": "Link"}
+ ],
+ "modified": "2026-05-26 12:00:00",
+ "modified_by": "Administrator",
+ "module": "FlowAgent Core",
+ "name": "FlowAgent",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [],
+ "sequence_id": 100.0,
+ "shortcuts": [
+  {"color": "Blue", "doc_view": "", "format": "", "label": "Open Studio", "link_to": "flowagent-studio", "stats_filter": "", "type": "Page"},
+  {"color": "Gray", "doc_view": "List", "format": "", "label": "All Workflows", "link_to": "FlowAgent Workflow", "stats_filter": "", "type": "DocType"},
+  {"color": "Green", "doc_view": "List", "format": "{\"status\":[\"in\",[\"Success\",\"Failed\",\"Running\"]]}", "label": "Recent Runs", "link_to": "FlowAgent Workflow Run", "stats_filter": "", "type": "DocType"}
+ ],
+ "title": "FlowAgent"
+}

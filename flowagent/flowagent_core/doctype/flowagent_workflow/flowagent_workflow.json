@@ -1,0 +1,246 @@
+{
+ "actions": [],
+ "autoname": "field:workflow_name",
+ "creation": "2026-05-26 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "workflow_name",
+  "enabled",
+  "column_break_top",
+  "description",
+  "section_trigger",
+  "trigger_type",
+  "trigger_doctype",
+  "trigger_event",
+  "column_break_trigger",
+  "trigger_cron",
+  "trigger_condition",
+  "section_graph",
+  "nodes_json",
+  "edges_json",
+  "viewport_json",
+  "section_runtime",
+  "on_error",
+  "max_retries",
+  "column_break_rt",
+  "log_level",
+  "tags",
+  "section_meta",
+  "last_run_status",
+  "last_run_at",
+  "column_break_meta",
+  "total_runs",
+  "webhook_path"
+ ],
+ "fields": [
+  {
+   "fieldname": "workflow_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Workflow Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "column_break_top",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "collapsible": 0,
+   "fieldname": "section_trigger",
+   "fieldtype": "Section Break",
+   "label": "Trigger"
+  },
+  {
+   "default": "Manual",
+   "fieldname": "trigger_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Trigger Type",
+   "options": "Manual\nDocType Event\nSchedule\nWebhook"
+  },
+  {
+   "depends_on": "eval:doc.trigger_type=='DocType Event'",
+   "fieldname": "trigger_doctype",
+   "fieldtype": "Link",
+   "label": "Trigger DocType",
+   "options": "DocType"
+  },
+  {
+   "depends_on": "eval:doc.trigger_type=='DocType Event'",
+   "fieldname": "trigger_event",
+   "fieldtype": "Select",
+   "label": "Trigger Event",
+   "options": "\nAfter Insert\nAfter Save\nAfter Submit\nAfter Cancel\nAfter Delete\nOn Change"
+  },
+  {
+   "fieldname": "column_break_trigger",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.trigger_type=='Schedule'",
+   "description": "Standard 5-field cron, e.g. '0 9 * * *' for every day at 9am.",
+   "fieldname": "trigger_cron",
+   "fieldtype": "Data",
+   "label": "Cron Expression"
+  },
+  {
+   "depends_on": "eval:doc.trigger_type=='DocType Event'",
+   "description": "Optional Python expression evaluated against the document. The workflow only runs when this returns truthy. Variables: doc, frappe. Example: doc.grand_total > 50000",
+   "fieldname": "trigger_condition",
+   "fieldtype": "Code",
+   "label": "Trigger Condition",
+   "options": "Python"
+  },
+  {
+   "collapsible": 0,
+   "fieldname": "section_graph",
+   "fieldtype": "Section Break",
+   "label": "Graph"
+  },
+  {
+   "description": "JSON array of nodes. Maintained by the Studio canvas.",
+   "fieldname": "nodes_json",
+   "fieldtype": "Long Text",
+   "label": "Nodes (JSON)"
+  },
+  {
+   "description": "JSON array of edges. Maintained by the Studio canvas.",
+   "fieldname": "edges_json",
+   "fieldtype": "Long Text",
+   "label": "Edges (JSON)"
+  },
+  {
+   "description": "Canvas zoom / pan state.",
+   "fieldname": "viewport_json",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Viewport (JSON)"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_runtime",
+   "fieldtype": "Section Break",
+   "label": "Runtime"
+  },
+  {
+   "default": "Stop",
+   "fieldname": "on_error",
+   "fieldtype": "Select",
+   "label": "On Node Error",
+   "options": "Stop\nContinue\nRetry"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.on_error=='Retry'",
+   "fieldname": "max_retries",
+   "fieldtype": "Int",
+   "label": "Max Retries"
+  },
+  {
+   "fieldname": "column_break_rt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Info",
+   "fieldname": "log_level",
+   "fieldtype": "Select",
+   "label": "Log Level",
+   "options": "Debug\nInfo\nWarn\nError"
+  },
+  {
+   "fieldname": "tags",
+   "fieldtype": "Data",
+   "label": "Tags"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_meta",
+   "fieldtype": "Section Break",
+   "label": "Stats"
+  },
+  {
+   "fieldname": "last_run_status",
+   "fieldtype": "Data",
+   "label": "Last Run Status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_run_at",
+   "fieldtype": "Datetime",
+   "label": "Last Run At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_meta",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_runs",
+   "fieldtype": "Int",
+   "label": "Total Runs",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.trigger_type=='Webhook'",
+   "description": "Auto-generated webhook path. Full URL: <site>/api/method/flowagent.api.webhook.handle?path=<path>&token=<webhook_secret>",
+   "fieldname": "webhook_path",
+   "fieldtype": "Data",
+   "label": "Webhook Path",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-05-26 12:00:00",
+ "modified_by": "Administrator",
+ "module": "FlowAgent Core",
+ "name": "FlowAgent Workflow",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "FlowAgent Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "workflow_name,trigger_doctype,tags",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "workflow_name",
+ "track_changes": 1
+}

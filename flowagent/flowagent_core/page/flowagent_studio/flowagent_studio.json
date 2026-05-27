@@ -1,0 +1,23 @@
+{
+ "content": null,
+ "creation": "2026-05-26 12:00:00",
+ "docstatus": 0,
+ "doctype": "Page",
+ "icon": "octicon octicon-git-branch",
+ "idx": 0,
+ "module": "FlowAgent Core",
+ "modified": "2026-05-26 12:00:00",
+ "modified_by": "Administrator",
+ "name": "flowagent-studio",
+ "owner": "Administrator",
+ "page_name": "flowagent-studio",
+ "roles": [
+  { "role": "System Manager" },
+  { "role": "FlowAgent Manager" }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "FlowAgent Studio"
+}
