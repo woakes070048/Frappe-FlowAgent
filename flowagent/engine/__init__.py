@@ -17,7 +17,8 @@ from .runner import Runner
 
 
 def run_workflow_background(workflow_name, trigger_source="manual",
-                            payload=None, user=None, dry_run=False):
+                            payload=None, user=None, dry_run=False,
+                            existing_run_name=None):
     """Background-worker entry point.
 
     Lives at this dotted path so it can be referenced by frappe.enqueue
@@ -31,6 +32,7 @@ def run_workflow_background(workflow_name, trigger_source="manual",
         payload=payload or {},
         user=user,
         dry_run=dry_run,
+        existing_run_name=existing_run_name,
     )
     return runner.execute()
 

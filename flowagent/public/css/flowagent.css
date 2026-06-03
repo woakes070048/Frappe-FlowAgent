@@ -1766,3 +1766,146 @@ body.fa-test-mode-active .fa-tb-btn.fa-run:hover {
     word-break: break-word;
 }
 [data-theme="dark"] .fa-top-err-count { color: #FCA5A5; }
+
+/* =================================================================
+   Topbar dropdown menus
+   ================================================================= */
+.fa-tb-menu {
+    position: relative;
+    display: inline-block;
+}
+.fa-tb-menu-chevron {
+    font-size: 13px !important;
+    margin-left: 2px;
+    opacity: 0.6;
+    transition: transform 0.15s;
+}
+.fa-tb-menu-btn-open .fa-tb-menu-chevron {
+    transform: rotate(180deg);
+    opacity: 1;
+}
+.fa-tb-menu-btn-open {
+    background: var(--fa-surface-2);
+    color: var(--fa-text);
+}
+
+.fa-tb-menu-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 240px;
+    background: var(--fa-surface);
+    border: 1px solid var(--fa-border);
+    border-radius: 9px;
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.06),
+        0 12px 32px rgba(0, 0, 0, 0.1);
+    padding: 4px 0;
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.fa-tb-menu-dropdown.fa-tb-menu-open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.fa-tb-menu-section {
+    font-family: var(--fa-font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--fa-text-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 8px 12px 4px;
+}
+.fa-tb-menu-divider {
+    height: 1px;
+    background: var(--fa-border);
+    margin: 4px 0;
+}
+.fa-tb-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--fa-text);
+    font-family: var(--fa-font);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.fa-tb-menu-item:hover {
+    background: var(--fa-surface-2);
+}
+.fa-tb-menu-item i {
+    font-size: 15px;
+    color: var(--fa-text-dim);
+    width: 16px;
+    flex-shrink: 0;
+}
+.fa-tb-menu-item span {
+    flex: 1;
+}
+.fa-tb-menu-kbd {
+    font-family: var(--fa-font-mono);
+    font-size: 10px;
+    color: var(--fa-text-mute);
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--fa-surface-2);
+    border: 1px solid var(--fa-border);
+    flex: 0 0 auto;
+}
+.fa-tb-menu-item-danger:hover {
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--fa-danger);
+}
+.fa-tb-menu-item-danger:hover i {
+    color: var(--fa-danger);
+}
+
+/* Advanced section in node config — collapsible retry settings */
+.fa-cfg-advanced {
+    margin-top: 16px;
+    border-top: 1px solid var(--fa-border);
+    padding-top: 12px;
+}
+.fa-cfg-advanced-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--fa-font);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fa-text-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    padding: 4px 0;
+    user-select: none;
+}
+.fa-cfg-advanced-head:hover { color: var(--fa-text-dim); }
+.fa-cfg-adv-chev {
+    font-size: 13px;
+    transition: transform 0.15s ease;
+}
+.fa-cfg-adv-hint {
+    margin-left: auto;
+    font-weight: 400;
+    font-size: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.7;
+}
+.fa-cfg-advanced-body {
+    margin-top: 8px;
+}

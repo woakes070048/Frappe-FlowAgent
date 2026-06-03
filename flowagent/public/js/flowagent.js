@@ -786,22 +786,57 @@ window.flowagent_studio_html = function () {
             <span class="fa-brand-tag">studio</span>
         </div>
         <div class="fa-tb-sep"></div>
-        <button class="fa-tb-btn" data-action="open">
-            <i class="ti ti-folder-open"></i> Open</button>
-        <button class="fa-tb-btn" data-action="new">
-            <i class="ti ti-plus"></i> New</button>
+
+        <!-- Workflow menu — consolidates Open / New / Save as Template / Import / Bulk run / Clear -->
+        <div class="fa-tb-menu" data-menu="workflow">
+            <button class="fa-tb-btn fa-tb-menu-btn" data-action="toggle-menu" data-menu-target="workflow">
+                <i class="ti ti-stack"></i> Workflow
+                <i class="ti ti-chevron-down fa-tb-menu-chevron"></i>
+            </button>
+            <div class="fa-tb-menu-dropdown" id="fa-menu-workflow">
+                <div class="fa-tb-menu-section">File</div>
+                <button class="fa-tb-menu-item" data-action="open">
+                    <i class="ti ti-folder-open"></i><span>Open workflow…</span>
+                    <span class="fa-tb-menu-kbd">⌘O</span>
+                </button>
+                <button class="fa-tb-menu-item" data-action="new">
+                    <i class="ti ti-plus"></i><span>New workflow</span>
+                </button>
+                <div class="fa-tb-menu-divider"></div>
+                <div class="fa-tb-menu-section">Templates</div>
+                <button class="fa-tb-menu-item" data-action="save-as-template">
+                    <i class="ti ti-bookmark-plus"></i><span>Save as template</span>
+                </button>
+                <button class="fa-tb-menu-item" data-action="import-template">
+                    <i class="ti ti-upload"></i><span>Import template…</span>
+                </button>
+                <div class="fa-tb-menu-divider"></div>
+                <div class="fa-tb-menu-section">Tools</div>
+                <button class="fa-tb-menu-item" data-action="bulk-retrigger">
+                    <i class="ti ti-repeat"></i><span>Bulk re-run…</span>
+                </button>
+                <button class="fa-tb-menu-item" data-action="diagnose">
+                    <i class="ti ti-stethoscope"></i><span>Diagnose triggers</span>
+                </button>
+                <div class="fa-tb-menu-divider"></div>
+                <button class="fa-tb-menu-item fa-tb-menu-item-danger" data-action="clear">
+                    <i class="ti ti-trash"></i><span>Clear canvas</span>
+                </button>
+            </div>
+        </div>
+
         <button class="fa-tb-btn" data-action="templates">
             <i class="ti ti-template"></i> Templates</button>
-        <button class="fa-tb-btn" data-action="versions" title="Workflow history">
+        <button class="fa-tb-btn" data-action="versions" title="Workflow history (auto-saved on every Save)">
             <i class="ti ti-history"></i> Versions</button>
-        <button class="fa-tb-btn" data-action="bulk-retrigger" title="Run this workflow against historic documents">
-            <i class="ti ti-repeat"></i> Bulk run</button>
+
+        <div class="fa-tb-sep"></div>
+
         <button class="fa-tb-btn fa-tb-icon-only" data-action="undo" title="Undo (Ctrl/⌘ + Z)">
             <i class="ti ti-arrow-back-up"></i></button>
         <button class="fa-tb-btn fa-tb-icon-only" data-action="redo" title="Redo (Ctrl/⌘ + Shift + Z)">
             <i class="ti ti-arrow-forward-up"></i></button>
-        <button class="fa-tb-btn fa-tb-icon-only" data-action="clear" title="Clear canvas">
-            <i class="ti ti-trash"></i></button>
+
         <div class="fa-tb-sep"></div>
         <label class="fa-tb-toggle">
             <input type="checkbox" id="fa-enabled-toggle">
@@ -810,8 +845,6 @@ window.flowagent_studio_html = function () {
         <span id="fa-trigger-indicator" class="fa-trigger-pill" title="Trigger status"></span>
         <div class="fa-spacer"></div>
         <span id="fa-wf-name" title="Click to rename">Untitled workflow</span>
-        <button class="fa-tb-btn fa-tb-icon-only" data-action="diagnose" title="Diagnose trigger issues">
-            <i class="ti ti-stethoscope"></i></button>
         <button class="fa-tb-btn" data-action="save">
             <i class="ti ti-device-floppy"></i> Save</button>
         <label class="fa-tb-toggle fa-test-toggle" title="Dry-run mode — preview the flow without writing data or hitting external services">
@@ -997,6 +1030,18 @@ window.flowagent_studio_html = function () {
                         </div>
                     </div>
 
+                    <div class="fa-stats-section" id="fa-ai-usage-section" style="display:none">
+                        <div class="fa-stats-section-label">AI usage (cumulative)</div>
+                        <div class="fa-stats-grid">
+                            <div class="fa-stat"><div class="fa-sv" id="fa-stat-ai-calls">0</div><div class="fa-sl">AI calls</div></div>
+                            <div class="fa-stat"><div class="fa-sv" id="fa-stat-ai-tokens">0</div><div class="fa-sl">tokens</div></div>
+                            <div class="fa-stat" style="grid-column: span 2">
+                                <div class="fa-sv" id="fa-stat-ai-cost" style="color:var(--fa-accent-hot)">$0</div>
+                                <div class="fa-sl">estimated cost (USD)</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="fa-stats-section" id="fa-top-errors-section" style="display:none">
                         <div class="fa-stats-section-label">Top errors</div>
                         <div id="fa-top-errors"></div>
@@ -1046,18 +1091,37 @@ window.flowagent_studio_teardown = function () {
         document.removeEventListener('keyup', state._keyupHandler);
         state._keyupHandler = null;
     }
+    if (state._runPollTimer) {
+        clearTimeout(state._runPollTimer);
+        state._runPollTimer = null;
+    }
+    if (state._runPollVisHandler) {
+        document.removeEventListener('visibilitychange', state._runPollVisHandler);
+        state._runPollVisHandler = null;
+    }
 };
 
 function bindEvents() {
     const root = document.getElementById('fa-app');
     if (!root) return;
 
-    // Toolbar buttons
+    // Toolbar buttons. Auto-close any open dropdown menu when a menu-item
+    // is clicked — except the toggle itself.
     root.querySelectorAll('[data-action]').forEach(btn => {
         btn.addEventListener('click', e => {
             e.preventDefault();
-            handleAction(btn.dataset.action);
+            const action = btn.dataset.action;
+            if (action !== 'toggle-menu' && btn.classList.contains('fa-tb-menu-item')) {
+                closeAllMenus();
+            }
+            handleAction(action, e);
         });
+    });
+
+    // Close dropdowns when clicking outside of them
+    document.addEventListener('click', e => {
+        if (e.target.closest && e.target.closest('.fa-tb-menu')) return;
+        closeAllMenus();
     });
 
     // Tab switching
@@ -1144,6 +1208,7 @@ function bindEvents() {
             if (e.key === '-')                  { e.preventDefault(); setZoom(state.zoom - ZOOM_STEP); }
             if (e.key === '0')                  { e.preventDefault(); resetView(); }
             if (e.key === 'k')                  { e.preventDefault(); openAIBuildModal(); }
+            if (e.key === 'o' && !isTypingTarget(e.target)) { e.preventDefault(); openDialog(); }
         }
         if (!isTypingTarget(e.target) && e.key === 'f') {
             e.preventDefault();
@@ -1428,7 +1493,37 @@ function renderMinimap() {
         `<rect class="fa-minimap-viewport" x="${vx}" y="${vy}" width="${vw}" height="${vh}" rx="4"/>`;
 }
 
-function handleAction(name) {
+// ============================================================
+// Topbar dropdown menus
+// ============================================================
+// We render at most one open dropdown at a time. The button that toggled it
+// is the one before its sibling .fa-tb-menu-dropdown.
+
+function toggleMenu(e) {
+    const btn = e && e.currentTarget;
+    if (!btn) return;
+    const target = btn.dataset.menuTarget;
+    if (!target) return;
+    const dropdown = document.getElementById('fa-menu-' + target);
+    if (!dropdown) return;
+    const wasOpen = dropdown.classList.contains('fa-tb-menu-open');
+    closeAllMenus();
+    if (!wasOpen) {
+        dropdown.classList.add('fa-tb-menu-open');
+        btn.classList.add('fa-tb-menu-btn-open');
+    }
+}
+
+function closeAllMenus() {
+    document.querySelectorAll('.fa-tb-menu-dropdown.fa-tb-menu-open').forEach(d => {
+        d.classList.remove('fa-tb-menu-open');
+    });
+    document.querySelectorAll('.fa-tb-menu-btn-open').forEach(b => {
+        b.classList.remove('fa-tb-menu-btn-open');
+    });
+}
+
+function handleAction(name, e) {
     switch (name) {
         case 'open':            return openDialog();
         case 'new':             return newWorkflow();
@@ -1448,9 +1543,12 @@ function handleAction(name) {
         case 'ai-modal-build':  return aiModalBuild();
         case 'replay-run':      return replayLastRun();
         case 'versions':        return openVersionsDialog();
-        case 'undo':            return undo();
-        case 'redo':            return redo();
-        case 'bulk-retrigger':  return openBulkRetriggerDialog();
+        case 'undo':              return undo();
+        case 'redo':              return redo();
+        case 'bulk-retrigger':    return openBulkRetriggerDialog();
+        case 'toggle-menu':       return toggleMenu(e);
+        case 'save-as-template':  return saveAsTemplate();
+        case 'import-template':   return importTemplateFromFile();
     }
 }
 
@@ -2432,7 +2530,49 @@ function renderConfigPanel() {
     def.fields.forEach(f => {
         html += renderField(n.id, f, n.cfg[f.k]);
     });
+
+    // Advanced section — applies to every node type. Collapsible because
+    // most workflows won't need to touch retry settings.
+    const retryAttempts = n.cfg.retry_attempts || '';
+    const retryDelay = n.cfg.retry_delay_ms || '';
+    html += `
+        <div class="fa-cfg-advanced">
+            <div class="fa-cfg-advanced-head" data-fa-advanced-toggle>
+                <i class="ti ti-chevron-right fa-cfg-adv-chev"></i>
+                <span>Advanced</span>
+                <span class="fa-cfg-adv-hint">retry on failure</span>
+            </div>
+            <div class="fa-cfg-advanced-body" style="display:none">
+                <div class="fa-field">
+                    <label>Retry attempts on failure</label>
+                    <input type="number" min="0" max="10"
+                           data-cfg-key="retry_attempts"
+                           value="${frappe.utils.escape_html(String(retryAttempts))}"
+                           placeholder="0">
+                </div>
+                <div class="fa-field">
+                    <label>Retry delay (ms)</label>
+                    <input type="number" min="0" step="100"
+                           data-cfg-key="retry_delay_ms"
+                           value="${frappe.utils.escape_html(String(retryDelay))}"
+                           placeholder="exponential backoff if blank">
+                </div>
+            </div>
+        </div>
+    `;
     body.innerHTML = html;
+
+    // Advanced section toggle
+    const advHead = body.querySelector('[data-fa-advanced-toggle]');
+    if (advHead) {
+        advHead.addEventListener('click', () => {
+            const advBody = body.querySelector('.fa-cfg-advanced-body');
+            const chev = body.querySelector('.fa-cfg-adv-chev');
+            const isOpen = advBody.style.display !== 'none';
+            advBody.style.display = isOpen ? 'none' : '';
+            chev.style.transform = isOpen ? '' : 'rotate(90deg)';
+        });
+    }
 
     // Plain inputs / textareas / selects — bind change handlers
     body.querySelectorAll('[data-cfg-key]').forEach(inp => {
@@ -3090,7 +3230,55 @@ function runWorkflow() {
 function executeRun(payload) {
     const dry = state.testMode ? 1 : 0;
     addLog(dry ? 'Test run (dry, no writes)…' : 'Running…', 'info');
-    document.querySelectorAll('.fa-node-status').forEach(s => s.style.background = 'var(--border-color)');
+
+    // Reset node status dots and clear any old run state on the canvas
+    document.querySelectorAll('.fa-node-status').forEach(s => {
+        s.removeAttribute('data-status');
+        s.style.background = '';
+    });
+    document.querySelectorAll('.fa-node-warn-badge').forEach(b => b.remove());
+
+    // Show the Trace tab immediately with a "running" placeholder so the
+    // user knows things are happening even before the first step lands.
+    switchTab('trace');
+    renderTracePane({
+        name: 'pending',
+        status: 'Running',
+        duration_ms: 0,
+        steps: [],
+        trigger_source: dry ? 'studio_dry_run' : 'studio_manual',
+    });
+
+    // Stop any prior polling
+    if (state._runPollTimer) {
+        clearTimeout(state._runPollTimer);
+        state._runPollTimer = null;
+    }
+
+    frappe.call({
+        method: 'flowagent.api.studio.run_workflow_now',
+        args: {
+            name: state.currentWorkflow,
+            sync: 0,  // enqueue async so we can stream progress via polling
+            payload: JSON.stringify(payload || {}),
+            dry_run: dry,
+        },
+        callback: r => {
+            const queued = r.message;
+            if (!queued || !queued.run_name) {
+                addLog('Run queue failed — falling back to sync', 'warn');
+                return _executeRunSync(payload, dry);
+            }
+            state.lastPayload = payload;
+            _startPollingRun(queued.run_name);
+        },
+        error: err => addLog('Run failed: ' + (err.message || err), 'err'),
+    });
+}
+
+// Sync-execution fallback for when async enqueue isn't available
+// (e.g. Redis down — run_workflow_now will still try the inline path).
+function _executeRunSync(payload, dry) {
     frappe.call({
         method: 'flowagent.api.studio.run_workflow_now',
         args: {
@@ -3103,15 +3291,94 @@ function executeRun(payload) {
             const run = r.message;
             if (!run) return;
             state.lastRun = run;
-            state.lastPayload = payload;  // for Replay
             paintTrace(run);
             refreshStats();
             switchTab('trace');
-            const colour = run.status === 'Success' ? 'ok' : 'err';
-            addLog(`Run ${run.name}: ${run.status} (${run.duration_ms}ms)`, colour);
+            addLog(`Run ${run.name}: ${run.status} (${run.duration_ms}ms)`,
+                   run.status === 'Success' ? 'ok' : 'err');
         },
         error: err => addLog('Run failed: ' + (err.message || err), 'err'),
     });
+}
+
+// Poll a queued run until it reaches a terminal state. We paint each
+// intermediate response so users see steps light up as the engine
+// records them. Starts at 400ms for snappy initial response, backs off
+// to 1500ms after 10 polls so a long workflow doesn't hammer the server.
+// Pauses while the tab is hidden — browsers throttle background timers
+// anyway, but pausing explicitly saves API calls.
+function _startPollingRun(runName) {
+    let lastStepCount = -1;
+    let consecutiveErrors = 0;
+    let pollCount = 0;
+    let runFinished = false;
+    const TERMINAL = new Set(['Success', 'Failed', 'Timeout', 'Cancelled']);
+
+    const nextPollDelay = () => pollCount < 10 ? 400 : 1500;
+
+    const scheduleNext = () => {
+        if (runFinished) return;
+        if (document.hidden) {
+            // Wait for visibilitychange to resume
+            return;
+        }
+        state._runPollTimer = setTimeout(fetchOnce, nextPollDelay());
+    };
+
+    const fetchOnce = () => {
+        pollCount++;
+        frappe.call({
+            method: 'flowagent.api.studio.get_run',
+            args: { run_name: runName },
+            callback: r => {
+                consecutiveErrors = 0;
+                const run = r.message;
+                if (!run) { scheduleNext(); return; }
+                const steps = run.steps || [];
+                if (steps.length !== lastStepCount || TERMINAL.has(run.status)) {
+                    lastStepCount = steps.length;
+                    state.lastRun = run;
+                    paintTrace(run);
+                }
+                if (TERMINAL.has(run.status)) {
+                    runFinished = true;
+                    if (state._runPollTimer) {
+                        clearTimeout(state._runPollTimer);
+                        state._runPollTimer = null;
+                    }
+                    refreshStats();
+                    addLog(`Run ${run.name}: ${run.status} (${run.duration_ms}ms)`,
+                           run.status === 'Success' ? 'ok' : 'err');
+                    return;
+                }
+                scheduleNext();
+            },
+            error: () => {
+                consecutiveErrors++;
+                if (consecutiveErrors >= 5) {
+                    runFinished = true;
+                    if (state._runPollTimer) {
+                        clearTimeout(state._runPollTimer);
+                        state._runPollTimer = null;
+                    }
+                    addLog('Lost contact with the run — check Runs tab manually', 'warn');
+                    return;
+                }
+                scheduleNext();
+            },
+        });
+    };
+
+    // Resume polling immediately when the user returns to the tab
+    const onVisibility = () => {
+        if (!document.hidden && !runFinished && !state._runPollTimer) {
+            fetchOnce();
+        }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    state._runPollVisHandler = onVisibility;
+
+    fetchOnce();
 }
 
 function saveThenRun() {
@@ -3177,6 +3444,24 @@ function paintTrace(run) {
 // ============================================================
 // Trace pane — step-by-step inspector with JSON variable trees
 // ============================================================
+
+// Compact token counts: 12345 → "12.3k", 999 → "999"
+function formatTokens(n) {
+    n = Number(n || 0);
+    if (n < 1000) return String(n);
+    if (n < 10000) return (n / 1000).toFixed(1) + 'k';
+    return Math.round(n / 1000) + 'k';
+}
+
+// Format a small USD amount with appropriate precision.
+function formatCost(usd) {
+    usd = Number(usd || 0);
+    if (usd === 0) return '$0';
+    if (usd < 0.01) return '<$0.01';
+    if (usd < 1)    return '$' + usd.toFixed(3);
+    return '$' + usd.toFixed(2);
+}
+
 function renderTracePane(run) {
     state.lastRun = run;
     const body = document.getElementById('fa-trace-body');
@@ -3231,6 +3516,22 @@ function renderTracePane(run) {
             </div>`;
     });
 
+    // Render AI usage row only if this run actually made AI calls — for a
+    // pure DocType-create workflow with no LLM nodes there's nothing to show.
+    const tokensTotal = (run.ai_tokens_in || 0) + (run.ai_tokens_out || 0);
+    const costStr = (run.ai_cost_usd || 0) > 0
+        ? '$' + (run.ai_cost_usd || 0).toFixed(4)
+        : '—';
+    const usageRow = (run.ai_calls || 0) > 0 ? `
+        <div class="fa-trace-trigger-info">
+            <span class="fa-trace-meta-label">AI</span>
+            <span class="fa-trace-meta-val">
+                ${run.ai_calls} call${run.ai_calls === 1 ? '' : 's'}
+                · ${formatTokens(run.ai_tokens_in)} in / ${formatTokens(run.ai_tokens_out)} out
+                · ${costStr}
+            </span>
+        </div>` : '';
+
     body.innerHTML = `
         <div class="fa-trace-header">
             <div class="fa-trace-run-name">${run.name || 'Run'}</div>
@@ -3244,6 +3545,7 @@ function renderTracePane(run) {
                 <span class="fa-trace-meta-label">trigger</span>
                 <span class="fa-trace-meta-val">${frappe.utils.escape_html(run.trigger_source || 'manual')}</span>
             </div>
+            ${usageRow}
         </div>
         <div class="fa-trace-steps">${stepsHtml}</div>
     `;
@@ -3495,8 +3797,22 @@ function refreshStats() {
             document.getElementById('fa-stat-ms').textContent = s.avg_ms ? (s.avg_ms + 'ms') : '—';
             renderSparkline(s.last_50 || []);
             renderTopErrors(s.top_errors || []);
+            renderAIUsage(s);
         },
     });
+}
+
+function renderAIUsage(s) {
+    const section = document.getElementById('fa-ai-usage-section');
+    if (!section) return;
+    if (!s || !s.ai_calls_total) {
+        section.style.display = 'none';
+        return;
+    }
+    section.style.display = '';
+    document.getElementById('fa-stat-ai-calls').textContent  = s.ai_calls_total || 0;
+    document.getElementById('fa-stat-ai-tokens').textContent = formatTokens(s.ai_tokens_total || 0);
+    document.getElementById('fa-stat-ai-cost').textContent   = formatCost(s.ai_cost_total || 0);
 }
 
 // Render a sparkline of the last 50 runs as colored bars. Bar height

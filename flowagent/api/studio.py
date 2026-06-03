@@ -283,7 +283,22 @@ def run_workflow_now(name: str, payload: str | None = None, sync: int = 0, dry_r
         ).execute()
         return get_run(run_name)
 
-    # Async enqueue
+    # Async enqueue. Pre-create the Run doc here (and commit) so the
+    # client receives its name immediately and can start polling for
+    # streamed step updates. The background runner adopts it via
+    # existing_run_name.
+    run_doc = frappe.get_doc({
+        "doctype": "FlowAgent Workflow Run",
+        "workflow": name,
+        "status": "Queued",
+        "trigger_source": trigger_source,
+        "started_at": frappe.utils.now_datetime(),
+        "trigger_payload": json.dumps(parsed_payload, default=str)[:140000],
+    })
+    run_doc.flags.ignore_permissions = True
+    run_doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+
     frappe.enqueue(
         "flowagent.engine.run_workflow_background",
         queue="default",
@@ -293,8 +308,9 @@ def run_workflow_now(name: str, payload: str | None = None, sync: int = 0, dry_r
         payload=parsed_payload,
         user=frappe.session.user,
         dry_run=is_dry,
+        existing_run_name=run_doc.name,
     )
-    return {"queued": True}
+    return {"queued": True, "run_name": run_doc.name}
 
 
 @frappe.whitelist()
@@ -310,6 +326,10 @@ def get_run(run_name: str):
         "started_at": str(doc.started_at) if doc.started_at else None,
         "ended_at": str(doc.ended_at) if doc.ended_at else None,
         "duration_ms": doc.duration_ms,
+        "ai_calls": doc.get("ai_calls") or 0,
+        "ai_tokens_in": doc.get("ai_tokens_in") or 0,
+        "ai_tokens_out": doc.get("ai_tokens_out") or 0,
+        "ai_cost_usd": float(doc.get("ai_cost_usd") or 0),
         "trigger_payload": _json_or_default(doc.trigger_payload, {}),
         "final_context": _json_or_default(doc.final_context, {}),
         "error_message": doc.error_message,
@@ -407,9 +427,29 @@ def workflow_stats(workflow: str | None = None):
             for e, c in sorted(counts.items(), key=lambda x: -x[1])[:3]
         ]
 
+    # Cumulative AI usage across all runs of this workflow.
+    where_clause = ""
+    params: tuple = ()
+    if workflow:
+        where_clause = "WHERE workflow=%s"
+        params = (workflow,)
+    usage_row = frappe.db.sql(
+        f"SELECT COALESCE(SUM(ai_calls), 0), COALESCE(SUM(ai_tokens_in), 0), "
+        f"       COALESCE(SUM(ai_tokens_out), 0), COALESCE(SUM(ai_cost_usd), 0) "
+        f"FROM `tabFlowAgent Workflow Run` {where_clause}",
+        params,
+    )
+    if usage_row and usage_row[0]:
+        ai_calls_total, ai_in_total, ai_out_total, ai_cost_total = usage_row[0]
+    else:
+        ai_calls_total = ai_in_total = ai_out_total = ai_cost_total = 0
+
     return {
         "runs": total, "ok": ok, "err": err, "avg_ms": avg,
         "last_50": last_50, "top_errors": top_errors,
+        "ai_calls_total":  int(ai_calls_total or 0),
+        "ai_tokens_total": int((ai_in_total or 0) + (ai_out_total or 0)),
+        "ai_cost_total":   float(ai_cost_total or 0),
     }
 
 
