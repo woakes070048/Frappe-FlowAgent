@@ -63,11 +63,16 @@ class Runner:
         trigger_source: str = "manual",
         payload: dict | None = None,
         user: str | None = None,
+        dry_run: bool = False,
     ):
         self.workflow_name = workflow_name
         self.trigger_source = trigger_source
         self.payload = payload or {}
         self.user = user or frappe.session.user
+        # Dry-run mode: write nodes don't actually mutate the DB,
+        # integration nodes return fake responses, but AI and read
+        # nodes execute for real so the user can preview the full flow.
+        self.dry_run = dry_run
 
         # Loaded in _load()
         self.wf = None

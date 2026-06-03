@@ -34,10 +34,16 @@ class CreateDocNode(BaseExecutor):
         if not doctype:
             frappe.throw("frappe_create requires a doctype")
         values = _parse_dict(cfg.get("values") or cfg.get("fields"))
+        if runner.dry_run:
+            # Don't actually insert; return a dummy doc shape so downstream
+            # nodes can run normally
+            return {
+                "_dry_run": True,
+                "name": f"DRY-RUN-{doctype}-{frappe.generate_hash(length=6)}",
+                **values,
+            }
         doc = frappe.get_doc({"doctype": doctype, **values})
         doc.insert()
-        # Mark as owned by the running workflow so the dispatcher won't
-        # re-fire this workflow when the insert triggers After Insert.
         _mark_owned(runner, doctype, doc.name)
         return {"name": doc.name, **{k: doc.get(k) for k in values.keys() if doc.get(k) is not None}}
 
@@ -67,6 +73,13 @@ class UpdateDocNode(BaseExecutor):
                 "frappe_update: 'Fields' is empty or not valid JSON. "
                 "Provide a JSON object like {\"status\": \"Done\"}."
             )
+        if runner.dry_run:
+            return {
+                "_dry_run": True,
+                "name": name,
+                "would_update_fields": list(values.keys()),
+                "values": values,
+            }
         # Mark owned BEFORE the save — the dispatcher fires synchronously
         # during save(), so the flag must be set first.
         _mark_owned(runner, doctype, name)
@@ -110,6 +123,8 @@ class SubmitDocNode(BaseExecutor):
         name = cfg.get("name")
         if not (doctype and name):
             frappe.throw("frappe_submit requires doctype and name")
+        if runner.dry_run:
+            return {"_dry_run": True, "name": name, "would_submit": True}
         _mark_owned(runner, doctype, name)
         doc = frappe.get_doc(doctype, name)
         doc.submit()
@@ -143,6 +158,9 @@ class ServerScriptNode(BaseExecutor):
         code = cfg.get("script") or cfg.get("code") or ""
         if not code:
             return None
+        if runner.dry_run:
+            # We can't statically know if a script mutates, so skip in dry mode.
+            return {"_dry_run": True, "would_run_script": code[:200]}
         local = {"context": context.data, "result": None, "input": context.data}
         safe_exec(code, _locals=local)
         return local.get("result")
